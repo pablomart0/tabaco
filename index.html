@@ -430,6 +430,127 @@
 
     #importInput { display: none; }
 
+    /* Hoja de detalle del registro */
+    .sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 80;
+    }
+
+    .sheet-backdrop.show { opacity: 1; pointer-events: auto; }
+
+    .sheet {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-radius: 18px 18px 0 0;
+      padding: 1.25rem 1.25rem calc(1.25rem + var(--safe-bottom));
+      transform: translateY(100%);
+      transition: transform 0.25s ease;
+      z-index: 90;
+      max-height: 90dvh;
+      overflow-y: auto;
+    }
+
+    .sheet.show { transform: translateY(0); }
+
+    .sheet-title {
+      text-align: center;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+
+    .sheet-title span { color: var(--accent); font-size: 1.25rem; }
+
+    .mood-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem;
+    }
+
+    .mood-btn {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--muted);
+      font-size: 0.65rem;
+      padding: 0.6rem 0.2rem;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      touch-action: manipulation;
+    }
+
+    .mood-btn .emoji { font-size: 1.4rem; line-height: 1; }
+
+    .mood-btn.selected {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--btn-1);
+    }
+
+    .note-input {
+      width: 100%;
+      min-height: 4.5rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font: inherit;
+      font-size: 16px;
+      padding: 0.7rem;
+      resize: vertical;
+    }
+
+    .note-input:focus { outline: none; border-color: var(--accent-dim); }
+
+    .sheet-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .sheet-actions button {
+      flex: 1;
+      border-radius: 10px;
+      padding: 0.85rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .sheet-cancel {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .sheet-save {
+      background: var(--accent);
+      border: 1px solid var(--accent);
+      color: #111;
+      font-weight: 500;
+    }
+
+    .entry-main { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+    .entry-mood { font-size: 0.75rem; color: var(--text); }
+    .entry-note {
+      font-size: 0.75rem;
+      color: var(--muted);
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+    .entry-item .entry-amount { flex-shrink: 0; margin-left: 0.75rem; }
+
     #installBanner {
       display: none;
       background: var(--surface);
@@ -600,10 +721,42 @@
 
   <div class="flash" id="flash"></div>
 
+  <div class="sheet-backdrop" id="sheetBackdrop"></div>
+  <div class="sheet" id="entrySheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-title" id="sheetTitle">Registrar <span id="sheetAmount"></span></div>
+    <div class="section-title">¿Cómo te sentís?</div>
+    <div class="mood-grid" id="moodGrid"></div>
+    <div class="section-title">Detalle (opcional)</div>
+    <textarea class="note-input" id="noteInput" maxlength="500" placeholder="¿Qué estaba pasando?"></textarea>
+    <div class="sheet-actions">
+      <button class="sheet-cancel" id="sheetCancel">Cancelar</button>
+      <button class="sheet-save" id="sheetSave">Guardar</button>
+    </div>
+  </div>
+
   <script>
     const STORAGE_KEY = 'tabaco_entries';
     const CSV_BACKUP_KEY = 'tabaco_csv_backup';
-    const CSV_HEADER = 'id,fecha,hora,cantidad,fraccion,timestamp';
+    const CSV_HEADER = 'id,fecha,hora,cantidad,fraccion,timestamp,estado_animo,detalle';
+
+    const MOODS = [
+      { id: 'felicidad',    label: 'Felicidad',    emoji: '😊' },
+      { id: 'calma',        label: 'Calma',        emoji: '😌' },
+      { id: 'tristeza',     label: 'Tristeza',     emoji: '😢' },
+      { id: 'enojo',        label: 'Enojo',        emoji: '😠' },
+      { id: 'ansiedad',     label: 'Ansiedad',     emoji: '😰' },
+      { id: 'estres',       label: 'Estrés',       emoji: '😣' },
+      { id: 'miedo',        label: 'Miedo',        emoji: '😨' },
+      { id: 'aburrimiento', label: 'Aburrimiento', emoji: '😐' },
+    ];
+
+    function getMood(id) {
+      return MOODS.find(m => m.id === id) || null;
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
 
     const SLOTS = [
       { id: 'madrugada', label: '00–06', start: 0, end: 6 },
@@ -675,7 +828,34 @@
       const d = new Date(e.ts);
       const fecha = d.toLocaleDateString('sv-SE');
       const hora = d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
-      return [e.id, fecha, hora, e.amount, fractionLabel(e.amount), e.ts].join(',');
+      return [e.id, fecha, hora, e.amount, fractionLabel(e.amount), e.ts, e.mood || '', e.note || '']
+        .map(csvField).join(',');
+    }
+
+    function csvField(v) {
+      const s = String(v);
+      return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    }
+
+    // Parser CSV con soporte de comillas (el detalle puede tener comas o saltos de línea)
+    function parseCsv(text) {
+      const rows = [];
+      let row = [], field = '', inQuotes = false;
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (inQuotes) {
+          if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
+          else if (c === '"') inQuotes = false;
+          else field += c;
+        } else if (c === '"') inQuotes = true;
+        else if (c === ',') { row.push(field); field = ''; }
+        else if (c === '\n' || c === '\r') {
+          if (c === '\r' && text[i + 1] === '\n') i++;
+          row.push(field); rows.push(row); row = []; field = '';
+        } else field += c;
+      }
+      if (field || row.length) { row.push(field); rows.push(row); }
+      return rows.filter(r => r.some(f => f.trim()));
     }
 
     function entriesToCsv(entries) {
@@ -702,14 +882,18 @@
       showFlash('CSV descargado');
     }
 
-    function parseCsvLine(line) {
-      const parts = line.split(',');
+    function parseCsvRow(parts) {
       if (parts.length < 6) return null;
       const id = parseInt(parts[0], 10);
       const amount = parseFloat(parts[3]);
-      const ts = parts.slice(5).join(',');
+      const ts = parts[5].trim();
       if (!id || isNaN(amount) || !ts) return null;
-      return { id, amount, ts };
+      const entry = { id, amount, ts };
+      const mood = (parts[6] || '').trim();
+      const note = (parts[7] || '').trim();
+      if (getMood(mood)) entry.mood = mood;
+      if (note) entry.note = note;
+      return entry;
     }
 
     function importCsvText(text) {
@@ -717,16 +901,16 @@
         showFlash('Sin permiso para importar');
         return;
       }
-      const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
-      if (lines.length < 2) {
+      const rows = parseCsv(text.replace(/^﻿/, ''));
+      if (rows.length < 2) {
         showFlash('CSV vacío o inválido');
         return;
       }
       const existing = loadEntries();
       const ids = new Set(existing.map(e => e.id));
       let added = 0;
-      for (let i = 1; i < lines.length; i++) {
-        const row = parseCsvLine(lines[i]);
+      for (let i = 1; i < rows.length; i++) {
+        const row = parseCsvRow(rows[i]);
         if (!row || ids.has(row.id)) continue;
         existing.push(row);
         ids.add(row.id);
@@ -739,16 +923,79 @@
       renderData();
     }
 
-    function addEntry(amount) {
+    function addEntry(amount, mood, note) {
       if (isReadonly()) {
         showFlash('Sin permiso para registrar');
         return;
       }
       const entries = loadEntries();
-      entries.push({ id: Date.now(), amount, ts: new Date().toISOString() });
+      const entry = { id: Date.now(), amount, ts: new Date().toISOString() };
+      if (mood) entry.mood = mood;
+      if (note) entry.note = note;
+      entries.push(entry);
       saveEntries(entries);
       updateHeader();
       showFlash(`+${formatAmount(amount)} registrado`);
+    }
+
+    // Hoja de detalle: se abre al tocar una cantidad y guarda con estado de ánimo + detalle
+    let pendingAmount = null;
+    let selectedMood = null;
+
+    function renderMoodGrid() {
+      document.getElementById('moodGrid').innerHTML = MOODS.map(m => `
+        <button type="button" class="mood-btn" data-mood="${m.id}">
+          <span class="emoji">${m.emoji}</span>${m.label}
+        </button>
+      `).join('');
+    }
+
+    function selectMood(id) {
+      selectedMood = selectedMood === id ? null : id;
+      document.querySelectorAll('.mood-btn').forEach(b => {
+        b.classList.toggle('selected', b.dataset.mood === selectedMood);
+      });
+    }
+
+    function openEntrySheet(amount) {
+      if (isReadonly()) {
+        showFlash('Sin permiso para registrar');
+        return;
+      }
+      pendingAmount = amount;
+      selectedMood = null;
+      document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+      document.getElementById('noteInput').value = '';
+      document.getElementById('sheetAmount').textContent = formatAmount(amount);
+      document.getElementById('sheetBackdrop').classList.add('show');
+      document.getElementById('entrySheet').classList.add('show');
+    }
+
+    function closeEntrySheet() {
+      pendingAmount = null;
+      document.getElementById('noteInput').blur();
+      document.getElementById('sheetBackdrop').classList.remove('show');
+      document.getElementById('entrySheet').classList.remove('show');
+    }
+
+    function saveEntrySheet() {
+      if (pendingAmount === null) return;
+      const note = document.getElementById('noteInput').value.trim();
+      addEntry(pendingAmount, selectedMood, note);
+      closeEntrySheet();
+    }
+
+    function entryItemHtml(e) {
+      const mood = getMood(e.mood);
+      return `
+        <li class="entry-item">
+          <span class="entry-main">
+            <span class="entry-time">${formatTime(e.ts)}</span>
+            ${mood ? `<span class="entry-mood">${mood.emoji} ${mood.label}</span>` : ''}
+            ${e.note ? `<span class="entry-note">${escapeHtml(e.note)}</span>` : ''}
+          </span>
+          <span class="entry-amount">${formatAmount(e.amount)}</span>
+        </li>`;
     }
 
     function formatAmount(n) {
@@ -820,12 +1067,7 @@
         list.innerHTML = '<li class="empty">Sin registros hoy</li>';
         return;
       }
-      list.innerHTML = entries.map(e => `
-        <li class="entry-item">
-          <span class="entry-time">${formatTime(e.ts)}</span>
-          <span class="entry-amount">${formatAmount(e.amount)}</span>
-        </li>
-      `).join('');
+      list.innerHTML = entries.map(entryItemHtml).join('');
     }
 
     function getReportRange() {
@@ -897,12 +1139,7 @@
           return;
         }
         const sorted = [...entries].sort((a, b) => new Date(b.ts) - new Date(a.ts));
-        breakdown.innerHTML = `<div class="card"><ul class="entry-list">${sorted.map(e => `
-          <li class="entry-item">
-            <span class="entry-time">${formatTime(e.ts)}</span>
-            <span class="entry-amount">${formatAmount(e.amount)}</span>
-          </li>
-        `).join('')}</ul></div>`;
+        breakdown.innerHTML = `<div class="card"><ul class="entry-list">${sorted.map(entryItemHtml).join('')}</ul></div>`;
       } else {
         title.textContent = 'Por día';
         const byDay = {};
@@ -1018,8 +1255,17 @@
     }
 
     document.querySelectorAll('.log-btn').forEach(btn => {
-      btn.addEventListener('click', () => addEntry(parseFloat(btn.dataset.amount)));
+      btn.addEventListener('click', () => openEntrySheet(parseFloat(btn.dataset.amount)));
     });
+
+    renderMoodGrid();
+    document.getElementById('moodGrid').addEventListener('click', (e) => {
+      const btn = e.target.closest('.mood-btn');
+      if (btn) selectMood(btn.dataset.mood);
+    });
+    document.getElementById('sheetSave').addEventListener('click', saveEntrySheet);
+    document.getElementById('sheetCancel').addEventListener('click', closeEntrySheet);
+    document.getElementById('sheetBackdrop').addEventListener('click', closeEntrySheet);
 
     document.querySelectorAll('nav button').forEach(btn => {
       btn.addEventListener('click', () => switchPanel(btn.dataset.panel));
