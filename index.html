@@ -551,6 +551,77 @@
     }
     .entry-item .entry-amount { flex-shrink: 0; margin-left: 0.75rem; }
 
+    .card-btn {
+      display: block;
+      width: 100%;
+      color: var(--text);
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .card-btn:active { background: var(--btn-1); border-color: var(--accent-dim); }
+    .card-btn .chevron { color: var(--muted); margin-left: 0.6rem; font-size: 1rem; }
+
+    .link-back {
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-size: 0.85rem;
+      padding: 0 0 0.75rem;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .date-range {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .date-range label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      min-width: 0;
+    }
+
+    .date-range input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      color-scheme: dark;
+      font: inherit;
+      font-size: 16px;
+      padding: 0.5rem;
+      min-width: 0;
+    }
+
+    .range-presets {
+      display: flex;
+      gap: 0.4rem;
+      margin-top: 0.6rem;
+    }
+
+    .range-presets button {
+      flex: 1;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 0.7rem;
+      padding: 0.4rem 0.2rem;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
     #installBanner {
       display: none;
       background: var(--surface);
@@ -629,6 +700,7 @@
         <button class="tab" data-period="week">Semana</button>
         <button class="tab" data-period="month">Mes</button>
       </div>
+      <button type="button" class="link-back" id="reportBack" style="display:none"></button>
       <div class="period-nav">
         <button id="prevPeriod">‹</button>
         <span class="period-label" id="periodLabel"></span>
@@ -673,6 +745,24 @@
         <span class="hint">Fusiona con los datos actuales sin duplicar</span>
       </button>
       <input type="file" id="importInput" accept=".csv,.txt,text/csv,text/plain">
+
+      <div class="section-title">Exportar PDF</div>
+      <div class="card">
+        <div class="date-range">
+          <label>Desde<input type="date" id="pdfFrom"></label>
+          <label>Hasta<input type="date" id="pdfTo"></label>
+        </div>
+        <div class="range-presets">
+          <button type="button" data-preset="7">7 días</button>
+          <button type="button" data-preset="30">30 días</button>
+          <button type="button" data-preset="month">Este mes</button>
+          <button type="button" data-preset="all">Todo</button>
+        </div>
+        <button class="btn-action primary" id="exportPdf" style="margin:0.75rem 0 0">
+          Descargar PDF
+          <span class="hint">Resumen, totales por día, estados de ánimo y detalle de cada registro</span>
+        </button>
+      </div>
 
       <div class="section-title" id="sessionTitle" style="display:none">Sesión</div>
       <button class="btn-action" id="logoutBtn" style="display:none">
@@ -769,6 +859,7 @@
 
     let reportPeriod = 'day';
     let reportOffset = 0;
+    let reportReturn = null; // vista semana/mes desde la que se abrió el detalle de un día
     let statRange = 7;
     let userRole = 'admin';
 
@@ -1132,6 +1223,12 @@
       const breakdown = document.getElementById('reportBreakdown');
       const title = document.getElementById('reportBreakdownTitle');
 
+      document.getElementById('reportBack').style.display = reportReturn && reportPeriod === 'day' ? 'block' : 'none';
+      if (reportReturn) {
+        document.getElementById('reportBack').textContent =
+          `‹ Volver ${reportReturn.period === 'week' ? 'a la semana' : 'al mes'}`;
+      }
+
       if (reportPeriod === 'day') {
         title.textContent = 'Registros';
         if (!entries.length) {
@@ -1152,10 +1249,12 @@
           breakdown.innerHTML = '<div class="card"><div class="empty">Sin registros</div></div>';
           return;
         }
+        const today = startOfDay(new Date());
         breakdown.innerHTML = days.map(key => {
           const d = new Date(key);
           const label = d.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' });
-          return `<div class="card"><div class="card-row"><span class="card-label">${label}</span><span class="card-value">${formatTotal(byDay[key])}</span></div></div>`;
+          const offset = Math.round((startOfDay(d) - today) / 86400000);
+          return `<button type="button" class="card card-btn" data-day-offset="${offset}"><div class="card-row"><span class="card-label">${label}</span><span class="card-value">${formatTotal(byDay[key])}<span class="chevron">›</span></span></div></button>`;
         }).join('');
       }
     }
@@ -1242,6 +1341,201 @@
       document.getElementById('installGuideIos').style.display = isIos && !isFile ? 'block' : 'none';
     }
 
+    // ---- Exportar PDF ----
+    const PDF_LIBS = [
+      'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js',
+    ];
+    let pdfLibsPromise = null;
+
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = () => reject(new Error(`No se pudo cargar ${src}`));
+        document.head.appendChild(s);
+      });
+    }
+
+    function loadPdfLibs() {
+      if (!pdfLibsPromise) {
+        // autotable se registra sobre jsPDF, por eso van en orden
+        pdfLibsPromise = PDF_LIBS.reduce((p, src) => p.then(() => loadScript(src)), Promise.resolve())
+          .catch(err => { pdfLibsPromise = null; throw err; });
+      }
+      return pdfLibsPromise;
+    }
+
+    function toInputDate(d) {
+      return d.toLocaleDateString('sv-SE');
+    }
+
+    function fromInputDate(s) {
+      const [y, m, d] = s.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    function setPdfPreset(preset) {
+      const today = new Date();
+      let from = new Date(today);
+      if (preset === 'month') {
+        from = new Date(today.getFullYear(), today.getMonth(), 1);
+      } else if (preset === 'all') {
+        const entries = loadEntries();
+        from = entries.length
+          ? new Date(Math.min(...entries.map(e => new Date(e.ts).getTime())))
+          : today;
+      } else {
+        from.setDate(today.getDate() - (parseInt(preset, 10) - 1));
+      }
+      document.getElementById('pdfFrom').value = toInputDate(from);
+      document.getElementById('pdfTo').value = toInputDate(today);
+    }
+
+    function formatShortDate(d) {
+      return d.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    async function exportPdf() {
+      const fromVal = document.getElementById('pdfFrom').value;
+      const toVal = document.getElementById('pdfTo').value;
+      if (!fromVal || !toVal) {
+        showFlash('Elegí las dos fechas');
+        return;
+      }
+      const start = startOfDay(fromInputDate(fromVal));
+      const end = endOfDay(fromInputDate(toVal));
+      if (start > end) {
+        showFlash('"Desde" es posterior a "Hasta"');
+        return;
+      }
+      const entries = entriesInRange(start, end).sort((a, b) => new Date(a.ts) - new Date(b.ts));
+      if (!entries.length) {
+        showFlash('Sin registros en ese rango');
+        return;
+      }
+
+      const btn = document.getElementById('exportPdf');
+      btn.disabled = true;
+      showFlash('Generando PDF…');
+      try {
+        await loadPdfLibs();
+        buildPdf(entries, start, end).save(`tabaco_reporte_${fromVal}_a_${toVal}.pdf`);
+        showFlash('PDF descargado');
+      } catch {
+        showFlash('No se pudo generar el PDF (¿sin conexión?)');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function buildPdf(entries, start, end) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      const accent = [201, 169, 110];
+      const headStyles = { fillColor: accent, textColor: 20, fontStyle: 'bold' };
+      const margin = 14;
+
+      const total = sumAmounts(entries);
+      const days = Math.round((startOfDay(end) - start) / 86400000) + 1;
+      const byDay = new Map();
+      entries.forEach(e => {
+        const key = startOfDay(new Date(e.ts)).getTime();
+        const cur = byDay.get(key) || { amount: 0, count: 0 };
+        cur.amount += e.amount;
+        cur.count++;
+        byDay.set(key, cur);
+      });
+      const peak = [...byDay.entries()].sort((a, b) => b[1].amount - a[1].amount)[0];
+      const fmtRange = (d) => d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+      doc.setFontSize(18);
+      doc.setTextColor(30);
+      doc.text('Tabaco — Reporte de consumo', margin, 20);
+      doc.setFontSize(10);
+      doc.setTextColor(110);
+      doc.text(`Del ${fmtRange(start)} al ${fmtRange(end)}`, margin, 27);
+      doc.text(`Generado el ${new Date().toLocaleString('es-AR')}`, margin, 32);
+
+      doc.autoTable({
+        startY: 38,
+        head: [['Resumen', '']],
+        body: [
+          ['Total de cigarrillos', formatTotal(total)],
+          ['Registros', String(entries.length)],
+          ['Días en el rango', String(days)],
+          ['Días sin registros', String(days - byDay.size)],
+          ['Promedio por día', formatTotal(total / days)],
+          ['Día de mayor consumo', `${formatShortDate(new Date(peak[0]))} (${formatTotal(peak[1].amount)})`],
+        ],
+        headStyles,
+        columnStyles: { 1: { halign: 'right' } },
+        margin: { left: margin, right: margin },
+      });
+
+      const moodRows = [...MOODS, { id: null, label: 'Sin especificar' }]
+        .map(m => {
+          const list = entries.filter(e => (getMood(e.mood) ? e.mood : null) === m.id);
+          return { label: m.label, count: list.length, amount: sumAmounts(list) };
+        })
+        .filter(r => r.count)
+        .sort((a, b) => b.amount - a.amount)
+        .map(r => [r.label, String(r.count), formatTotal(r.amount), `${Math.round((r.amount / total) * 100)}%`]);
+
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 8,
+        head: [['Estado de ánimo', 'Registros', 'Cigarrillos', '% del total']],
+        body: moodRows,
+        headStyles,
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+        margin: { left: margin, right: margin },
+      });
+
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 8,
+        head: [['Día', 'Registros', 'Cigarrillos']],
+        body: [...byDay.entries()].map(([k, v]) => [formatShortDate(new Date(k)), String(v.count), formatTotal(v.amount)]),
+        headStyles,
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } },
+        margin: { left: margin, right: margin },
+      });
+
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 8,
+        head: [['Fecha', 'Hora', 'Cant.', 'Estado de ánimo', 'Detalle']],
+        body: entries.map(e => {
+          const d = new Date(e.ts);
+          const mood = getMood(e.mood);
+          return [
+            d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' }),
+            d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false }),
+            fractionLabel(e.amount),
+            mood ? mood.label : '—',
+            e.note || '',
+          ];
+        }),
+        headStyles,
+        styles: { fontSize: 9, cellPadding: 2, valign: 'top' },
+        columnStyles: {
+          0: { cellWidth: 20 },
+          1: { cellWidth: 14 },
+          2: { cellWidth: 13, halign: 'right' },
+          3: { cellWidth: 30 },
+        },
+        margin: { left: margin, right: margin },
+      });
+
+      const pages = doc.getNumberOfPages();
+      for (let i = 1; i <= pages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(`Página ${i} de ${pages}`, doc.internal.pageSize.getWidth() - margin, doc.internal.pageSize.getHeight() - 8, { align: 'right' });
+      }
+      return doc;
+    }
+
     function switchPanel(name) {
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       document.getElementById(`panel-${name}`).classList.add('active');
@@ -1277,8 +1571,34 @@
         tab.classList.add('active');
         reportPeriod = tab.dataset.period;
         reportOffset = 0;
+        reportReturn = null;
         renderReports();
       });
+    });
+
+    function setReportTab(period) {
+      document.querySelectorAll('#panel-reports .tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.period === period);
+      });
+      reportPeriod = period;
+    }
+
+    document.getElementById('reportBreakdown').addEventListener('click', (e) => {
+      const card = e.target.closest('[data-day-offset]');
+      if (!card) return;
+      reportReturn = { period: reportPeriod, offset: reportOffset };
+      setReportTab('day');
+      reportOffset = parseInt(card.dataset.dayOffset, 10);
+      renderReports();
+      window.scrollTo(0, 0);
+    });
+
+    document.getElementById('reportBack').addEventListener('click', () => {
+      if (!reportReturn) return;
+      setReportTab(reportReturn.period);
+      reportOffset = reportReturn.offset;
+      reportReturn = null;
+      renderReports();
     });
 
     document.getElementById('prevPeriod').addEventListener('click', () => {
@@ -1300,6 +1620,12 @@
     });
 
     document.getElementById('exportCsv').addEventListener('click', downloadCsv);
+
+    setPdfPreset('30');
+    document.getElementById('exportPdf').addEventListener('click', exportPdf);
+    document.querySelectorAll('.range-presets button').forEach(b => {
+      b.addEventListener('click', () => setPdfPreset(b.dataset.preset));
+    });
 
     document.getElementById('importCsv').addEventListener('click', () => {
       document.getElementById('importInput').click();
