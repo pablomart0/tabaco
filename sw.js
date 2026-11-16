@@ -1,4 +1,4 @@
-const CACHE = 'tabaco-v4';
+const CACHE = 'tabaco-v5';
 const ASSETS = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', (e) => {
