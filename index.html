@@ -20,6 +20,10 @@
       --accent: #c9a96e;
       --accent-dim: #8a7350;
       --btn-1: #3d3d3d;
+      --vape: #7fb3c8;
+      --vape-dim: #46677a;
+      --good: #7fb88a;
+      --warn: #c99a6e;
       --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
 
@@ -139,6 +143,95 @@
       margin-top: 0.35rem;
       letter-spacing: 0.05em;
     }
+
+    .log-btn.vape-btn {
+      grid-column: 1 / -1;
+      font-size: 1.5rem;
+      padding: 1.25rem 1rem;
+      color: var(--vape);
+      border-color: var(--vape-dim);
+    }
+
+    .log-btn.vape-btn:active { border-color: var(--vape); }
+
+    .today-vape {
+      font-size: 0.8rem;
+      color: var(--vape);
+      margin-top: 0.2rem;
+      min-height: 1.1em;
+    }
+
+    .vape-text { color: var(--vape); }
+    .bar-fill.vape { background: var(--vape); }
+    .card-vape { font-size: 0.8rem; color: var(--vape); margin-left: 0.5rem; }
+
+    .bar-stack { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+    .bar-stack .bar-track { flex: none; }
+    .bar-value small { display: block; color: var(--vape); font-size: 0.7rem; }
+
+    .legend {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .legend i {
+      display: inline-block;
+      width: 0.6rem;
+      height: 0.6rem;
+      border-radius: 2px;
+      margin-right: 0.3rem;
+      vertical-align: -1px;
+      background: var(--accent);
+    }
+
+    .legend i.vape { background: var(--vape); }
+
+    .verdict { font-size: 0.85rem; line-height: 1.5; }
+    .verdict strong { font-weight: 500; }
+    .verdict .note { display: block; font-size: 0.72rem; color: var(--muted); margin-top: 0.5rem; }
+
+    .cmp-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .cmp-table th {
+      font-weight: 400;
+      color: var(--muted);
+      font-size: 0.68rem;
+      text-align: right;
+      padding: 0 0 0.4rem 0.4rem;
+    }
+    .cmp-table th:first-child, .cmp-table td:first-child { text-align: left; padding-left: 0; }
+    .cmp-table td { text-align: right; padding: 0.45rem 0 0.45rem 0.4rem; border-top: 1px solid var(--border); }
+    .cmp-table .delta { display: block; font-size: 0.68rem; }
+
+    .down { color: var(--good); }
+    .up { color: var(--warn); }
+
+    .slot-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .slot-row:last-child { border-bottom: none; }
+    .slot-row .slot-name { font-size: 0.85rem; }
+    .slot-row .slot-nums { font-size: 0.72rem; color: var(--muted); margin-top: 0.15rem; }
+
+    .pill {
+      flex-shrink: 0;
+      font-size: 0.65rem;
+      border-radius: 1rem;
+      padding: 0.2rem 0.55rem;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .pill.reemplazo { color: var(--good); border-color: #3e5c44; }
+    .pill.baja { color: var(--accent); border-color: var(--accent-dim); }
+    .pill.suma, .pill.sube { color: var(--warn); border-color: #5c4a35; }
 
     .flash {
       position: fixed;
@@ -666,6 +759,7 @@
     <h1>Tabaco</h1>
     <div class="today-total" id="headerTotal">0</div>
     <div class="today-label">cigarrillos hoy</div>
+    <div class="today-vape" id="headerVape"></div>
     <div class="readonly-badge">Solo lectura</div>
   </header>
 
@@ -677,6 +771,7 @@
         <button class="log-btn" data-amount="0.5">½<span class="sub">medio</span></button>
         <button class="log-btn" data-amount="0.75">¾<span class="sub">tres cuartos</span></button>
         <button class="log-btn" data-amount="1">1<span class="sub">completo</span></button>
+        <button class="log-btn vape-btn" data-amount="1" data-type="vaper">Vaper<span class="sub">una sesión</span></button>
       </div>
       <p class="readonly-notice">Modo solo lectura — no podés registrar ni importar datos.</p>
     </section>
@@ -685,6 +780,7 @@
     <section class="panel" id="panel-today">
       <div class="card stat-highlight">
         <div class="big" id="todayDetailTotal">0</div>
+        <div class="desc vape-text" id="todayDetailVape"></div>
         <div class="desc" id="todayDetailDate"></div>
       </div>
       <div class="section-title">Registros de hoy</div>
@@ -709,7 +805,9 @@
       <div class="card stat-highlight">
         <div class="big" id="reportTotal">0</div>
         <div class="desc" id="reportAvg"></div>
+        <div class="desc vape-text" id="reportVape"></div>
       </div>
+      <div id="reportAnalysis"></div>
       <div class="section-title" id="reportBreakdownTitle">Desglose</div>
       <div id="reportBreakdown"></div>
     </section>
@@ -725,6 +823,7 @@
         <div class="big" id="peakSlot">—</div>
         <div class="desc">franja con más consumo</div>
       </div>
+      <div id="vapeSince"></div>
       <div class="section-title">Por franja horaria</div>
       <div class="card" id="slotBars"></div>
       <div class="section-title">Por hora del día</div>
@@ -760,7 +859,7 @@
         </div>
         <button class="btn-action primary" id="exportPdf" style="margin:0.75rem 0 0">
           Descargar PDF
-          <span class="hint">Resumen, totales por día, estados de ánimo y detalle de cada registro</span>
+          <span class="hint">Resumen, tabaco vs vaper por semana, totales por día, estados de ánimo y detalle</span>
         </button>
       </div>
 
@@ -813,7 +912,7 @@
 
   <div class="sheet-backdrop" id="sheetBackdrop"></div>
   <div class="sheet" id="entrySheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
-    <div class="sheet-title" id="sheetTitle">Registrar <span id="sheetAmount"></span></div>
+    <div class="sheet-title" id="sheetTitle"><span id="sheetVerb">Registrar</span> <span id="sheetAmount"></span></div>
     <div class="section-title">¿Cómo te sentís?</div>
     <div class="mood-grid" id="moodGrid"></div>
     <div class="section-title">Detalle (opcional)</div>
@@ -827,7 +926,15 @@
   <script>
     const STORAGE_KEY = 'tabaco_entries';
     const CSV_BACKUP_KEY = 'tabaco_csv_backup';
-    const CSV_HEADER = 'id,fecha,hora,cantidad,fraccion,timestamp,estado_animo,detalle';
+    const CSV_HEADER = 'id,fecha,hora,cantidad,fraccion,timestamp,estado_animo,detalle,tipo';
+
+    // Tipo de registro. Los registros viejos no tienen "type" y cuentan como tabaco.
+    // Tabaco: amount = fracción de cigarrillo. Vaper: amount = 1 sesión.
+    function entryType(e) { return e.type === 'vaper' ? 'vaper' : 'tabaco'; }
+    function isVape(e) { return entryType(e) === 'vaper'; }
+    function sumCigs(entries) { return entries.reduce((s, e) => s + (isVape(e) ? 0 : e.amount), 0); }
+    function sumVapes(entries) { return entries.reduce((s, e) => s + (isVape(e) ? e.amount : 0), 0); }
+    function vapeText(n) { return `${formatTotal(n)} ${n === 1 ? 'sesión' : 'sesiones'} de vaper`; }
 
     const MOODS = [
       { id: 'felicidad',    label: 'Felicidad',    emoji: '😊' },
@@ -919,7 +1026,7 @@
       const d = new Date(e.ts);
       const fecha = d.toLocaleDateString('sv-SE');
       const hora = d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
-      return [e.id, fecha, hora, e.amount, fractionLabel(e.amount), e.ts, e.mood || '', e.note || '']
+      return [e.id, fecha, hora, e.amount, isVape(e) ? 'sesion' : fractionLabel(e.amount), e.ts, e.mood || '', e.note || '', entryType(e)]
         .map(csvField).join(',');
     }
 
@@ -984,6 +1091,7 @@
       const note = (parts[7] || '').trim();
       if (getMood(mood)) entry.mood = mood;
       if (note) entry.note = note;
+      if ((parts[8] || '').trim().toLowerCase() === 'vaper') entry.type = 'vaper';
       return entry;
     }
 
@@ -1014,23 +1122,25 @@
       renderData();
     }
 
-    function addEntry(amount, mood, note) {
+    function addEntry(amount, mood, note, type) {
       if (isReadonly()) {
         showFlash('Sin permiso para registrar');
         return;
       }
       const entries = loadEntries();
       const entry = { id: Date.now(), amount, ts: new Date().toISOString() };
+      if (type === 'vaper') entry.type = 'vaper';
       if (mood) entry.mood = mood;
       if (note) entry.note = note;
       entries.push(entry);
       saveEntries(entries);
       updateHeader();
-      showFlash(`+${formatAmount(amount)} registrado`);
+      showFlash(type === 'vaper' ? 'Vaper registrado' : `+${formatAmount(amount)} registrado`);
     }
 
     // Hoja de detalle: se abre al tocar una cantidad y guarda con estado de ánimo + detalle
     let pendingAmount = null;
+    let pendingType = 'tabaco';
     let selectedMood = null;
 
     function renderMoodGrid() {
@@ -1048,16 +1158,19 @@
       });
     }
 
-    function openEntrySheet(amount) {
+    function openEntrySheet(amount, type) {
       if (isReadonly()) {
         showFlash('Sin permiso para registrar');
         return;
       }
       pendingAmount = amount;
+      pendingType = type === 'vaper' ? 'vaper' : 'tabaco';
       selectedMood = null;
       document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
       document.getElementById('noteInput').value = '';
-      document.getElementById('sheetAmount').textContent = formatAmount(amount);
+      document.getElementById('sheetVerb').textContent = pendingType === 'vaper' ? 'Registrar sesión de' : 'Registrar';
+      document.getElementById('sheetAmount').textContent = pendingType === 'vaper' ? 'vaper' : formatAmount(amount);
+      document.getElementById('sheetAmount').classList.toggle('vape-text', pendingType === 'vaper');
       document.getElementById('sheetBackdrop').classList.add('show');
       document.getElementById('entrySheet').classList.add('show');
     }
@@ -1072,7 +1185,7 @@
     function saveEntrySheet() {
       if (pendingAmount === null) return;
       const note = document.getElementById('noteInput').value.trim();
-      addEntry(pendingAmount, selectedMood, note);
+      addEntry(pendingAmount, selectedMood, note, pendingType);
       closeEntrySheet();
     }
 
@@ -1085,7 +1198,9 @@
             ${mood ? `<span class="entry-mood">${mood.emoji} ${mood.label}</span>` : ''}
             ${e.note ? `<span class="entry-note">${escapeHtml(e.note)}</span>` : ''}
           </span>
-          <span class="entry-amount">${formatAmount(e.amount)}</span>
+          ${isVape(e)
+            ? '<span class="entry-amount vape-text">vaper</span>'
+            : `<span class="entry-amount">${formatAmount(e.amount)}</span>`}
         </li>`;
     }
 
@@ -1131,8 +1246,10 @@
     }
 
     function updateHeader() {
-      const total = sumAmounts(getTodayEntries());
-      document.getElementById('headerTotal').textContent = formatTotal(total);
+      const today = getTodayEntries();
+      document.getElementById('headerTotal').textContent = formatTotal(sumCigs(today));
+      const vapes = sumVapes(today);
+      document.getElementById('headerVape').textContent = vapes ? `+ ${vapeText(vapes)}` : '';
     }
 
     function formatTotal(n) {
@@ -1149,8 +1266,9 @@
 
     function renderToday() {
       const entries = getTodayEntries().sort((a, b) => new Date(b.ts) - new Date(a.ts));
-      const total = sumAmounts(entries);
-      document.getElementById('todayDetailTotal').textContent = formatTotal(total);
+      document.getElementById('todayDetailTotal').textContent = formatTotal(sumCigs(entries));
+      const todayVapes = sumVapes(entries);
+      document.getElementById('todayDetailVape').textContent = todayVapes ? vapeText(todayVapes) : '';
       document.getElementById('todayDetailDate').textContent = formatDate(new Date());
 
       const list = document.getElementById('todayEntries');
@@ -1169,20 +1287,8 @@
         return { start: startOfDay(d), end: endOfDay(d), label: formatDate(d) };
       }
       if (reportPeriod === 'week') {
-        const d = new Date(now);
-        d.setDate(d.getDate() + reportOffset * 7);
-        const day = d.getDay();
-        const diff = day === 0 ? -6 : 1 - day;
-        const monday = new Date(d);
-        monday.setDate(d.getDate() + diff);
-        const sunday = new Date(monday);
-        sunday.setDate(monday.getDate() + 6);
-        const fmt = (x) => x.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
-        return {
-          start: startOfDay(monday),
-          end: endOfDay(sunday),
-          label: `${fmt(monday)} – ${fmt(sunday)}`
-        };
+        const w = weekBounds(reportOffset);
+        return { ...w, label: weekLabel(w) };
       }
       const d = new Date(now.getFullYear(), now.getMonth() + reportOffset, 1);
       const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
@@ -1203,22 +1309,26 @@
     function renderReports() {
       const { start, end, label } = getReportRange();
       const entries = entriesInRange(start, end);
-      const total = sumAmounts(entries);
+      const total = sumCigs(entries);
+      const vapes = sumVapes(entries);
 
       document.getElementById('periodLabel').textContent = label;
       document.getElementById('reportTotal').textContent = formatTotal(total);
 
       let avgText = '';
+      let vapeLine = vapes ? vapeText(vapes) : '';
       if (reportPeriod === 'day') {
-        avgText = `${entries.length} registro${entries.length !== 1 ? 's' : ''}`;
-      } else if (reportPeriod === 'week') {
-        const days = 7;
-        avgText = `promedio ${formatTotal(total / days)} / día`;
+        const n = entries.filter(e => !isVape(e)).length;
+        avgText = `cigarrillos · ${n} registro${n !== 1 ? 's' : ''}`;
       } else {
-        const days = end.getDate();
-        avgText = `promedio ${formatTotal(total / days)} / día`;
+        const days = reportPeriod === 'week' ? 7 : end.getDate();
+        avgText = `cigarrillos · promedio ${formatTotal(total / days)} / día`;
+        if (vapes) vapeLine += ` · ${formatTotal(vapes / days)} / día`;
       }
       document.getElementById('reportAvg').textContent = avgText;
+      document.getElementById('reportVape').textContent = vapeLine;
+      document.getElementById('reportAnalysis').innerHTML =
+        reportPeriod === 'week' ? renderWeekAnalysis(reportOffset) : '';
 
       const breakdown = document.getElementById('reportBreakdown');
       const title = document.getElementById('reportBreakdownTitle');
@@ -1242,7 +1352,8 @@
         const byDay = {};
         entries.forEach(e => {
           const key = startOfDay(new Date(e.ts)).toISOString();
-          byDay[key] = (byDay[key] || 0) + e.amount;
+          const cur = byDay[key] || (byDay[key] = { cigs: 0, vapes: 0 });
+          if (isVape(e)) cur.vapes += e.amount; else cur.cigs += e.amount;
         });
         const days = Object.keys(byDay).sort().reverse();
         if (!days.length) {
@@ -1254,9 +1365,298 @@
           const d = new Date(key);
           const label = d.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' });
           const offset = Math.round((startOfDay(d) - today) / 86400000);
-          return `<button type="button" class="card card-btn" data-day-offset="${offset}"><div class="card-row"><span class="card-label">${label}</span><span class="card-value">${formatTotal(byDay[key])}<span class="chevron">›</span></span></div></button>`;
+          return `<button type="button" class="card card-btn" data-day-offset="${offset}"><div class="card-row"><span class="card-label">${label}</span><span class="card-value">${formatTotal(byDay[key].cigs)}${byDay[key].vapes ? `<span class="card-vape">+${formatTotal(byDay[key].vapes)} vaper</span>` : ''}<span class="chevron">›</span></span></div></button>`;
         }).join('');
       }
+    }
+
+    // ---- Análisis semanal tabaco vs vaper ----
+    const BASELINE_WEEKS = 4;  // semanas previas que forman el "promedio habitual"
+    const TREND_WEEKS = 8;
+    const DAY_MS = 86400000;
+
+    function weekBounds(offset) {
+      const d = new Date();
+      d.setDate(d.getDate() + offset * 7);
+      const day = d.getDay();
+      const monday = new Date(d);
+      monday.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      return { start: startOfDay(monday), end: endOfDay(sunday) };
+    }
+
+    function weekLabel({ start, end }) {
+      const fmt = (x) => x.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+      return `${fmt(start)} – ${fmt(end)}`;
+    }
+
+    // Registros de una semana; con elapsedMs se corta en el mismo punto de la semana
+    // (para comparar una semana en curso contra semanas completas de forma justa).
+    function weekEntries(all, offset, elapsedMs) {
+      const { start, end } = weekBounds(offset);
+      const from = start.getTime();
+      const to = elapsedMs == null ? end.getTime() : Math.min(end.getTime(), from + elapsedMs);
+      return all.filter(e => { const t = new Date(e.ts).getTime(); return t >= from && t <= to; });
+    }
+
+    function weekOffsetOf(ts) {
+      const d = new Date(ts);
+      const day = d.getDay();
+      d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+      return Math.round((startOfDay(d) - weekBounds(0).start) / (7 * DAY_MS));
+    }
+
+    function firstEntryTime(all) {
+      return all.length ? Math.min(...all.map(e => new Date(e.ts).getTime())) : null;
+    }
+
+    // Semana con datos "suficientes": el registro empezó a más tardar el martes de esa semana
+    function weekHasHistory(offset, firstTs) {
+      return firstTs !== null && firstTs <= weekBounds(offset).start.getTime() + DAY_MS * 2;
+    }
+
+    function totalsBySlot(entries) {
+      const r = {};
+      SLOTS.forEach(s => r[s.id] = { cigs: 0, vapes: 0 });
+      entries.forEach(e => {
+        const slot = getSlot(new Date(e.ts).getHours());
+        if (isVape(e)) r[slot.id].vapes += e.amount; else r[slot.id].cigs += e.amount;
+      });
+      return r;
+    }
+
+    function isSignificantChange(diff, base) {
+      return Math.abs(diff) >= 1 && Math.abs(diff) >= base * 0.15;
+    }
+
+    function analyzeWeek(offset) {
+      const all = loadEntries();
+      const { start, end } = weekBounds(offset);
+      const now = Date.now();
+      const partial = now < end.getTime();
+      const elapsedMs = partial ? now - start.getTime() : null;
+      const firstTs = firstEntryTime(all);
+
+      const cur = weekEntries(all, offset, elapsedMs);
+      const prevWeek = weekHasHistory(offset - 1, firstTs) ? weekEntries(all, offset - 1, elapsedMs) : null;
+
+      // Línea base: las semanas previas al primer uso de vaper (el hábito "sin vaper").
+      // Si la semana elegida es anterior al vaper, se usan las semanas previas a ella.
+      const vapeTimes = all.filter(isVape).map(e => new Date(e.ts).getTime());
+      const vapeWeek = vapeTimes.length ? weekOffsetOf(Math.min(...vapeTimes)) : null;
+      const preVape = vapeWeek !== null && offset >= vapeWeek;
+      const baseFrom = preVape ? vapeWeek : offset;
+      const baseWeeks = [];
+      for (let i = 1; i <= BASELINE_WEEKS && weekHasHistory(baseFrom - i, firstTs); i++) {
+        baseWeeks.push(weekEntries(all, baseFrom - i, elapsedMs));
+      }
+      const n = baseWeeks.length;
+      const avg = (fn) => n ? baseWeeks.reduce((s, w) => s + fn(w), 0) / n : 0;
+      const events = (list, vape) => list.filter(e => isVape(e) === vape).length;
+      const share = (list) => {
+        const v = events(list, true), c = events(list, false);
+        return v + c ? v / (v + c) : 0;
+      };
+
+      const curSlots = totalsBySlot(cur);
+      const baseSlotsList = baseWeeks.map(totalsBySlot);
+      const slots = SLOTS.map(s => {
+        const baseCigs = n ? baseSlotsList.reduce((t, b) => t + b[s.id].cigs, 0) / n : 0;
+        const { cigs, vapes } = curSlots[s.id];
+        const diff = cigs - baseCigs;
+        let status = 'igual';
+        if (n && isSignificantChange(diff, baseCigs)) {
+          status = diff > 0 ? 'sube' : (vapes > 0 ? 'reemplazo' : 'baja');
+        } else if (vapes > 0) {
+          status = 'suma';
+        }
+        return { ...s, baseCigs, cigs, vapes, diff, status };
+      });
+
+      // Horas en las que solías fumar: hubo cigarrillo en al menos la mitad de las semanas base
+      const hourWeeks = new Array(24).fill(0);
+      baseWeeks.forEach(w => {
+        new Set(w.filter(e => !isVape(e)).map(e => new Date(e.ts).getHours())).forEach(h => hourWeeks[h]++);
+      });
+      const habitual = (h) => n && [h - 1, h, h + 1].some(x => hourWeeks[(x + 24) % 24] >= Math.ceil(n / 2));
+      const curVapeEvents = cur.filter(isVape);
+      const vapesInHabitual = curVapeEvents.filter(e => habitual(new Date(e.ts).getHours())).length;
+
+      const prev = prevWeek;
+      return {
+        start, end, partial, elapsedMs, n, preVape,
+        cur: { cigs: sumCigs(cur), vapes: sumVapes(cur), share: share(cur) },
+        prev: prev ? { cigs: sumCigs(prev), vapes: sumVapes(prev), share: share(prev) } : null,
+        base: n ? { cigs: avg(sumCigs), vapes: avg(sumVapes), share: avg(share) } : null,
+        slots,
+        vapeEvents: curVapeEvents.length,
+        vapesInHabitual,
+      };
+    }
+
+    function weekTrend(offset) {
+      const all = loadEntries();
+      const firstTs = firstEntryTime(all);
+      const rows = [];
+      for (let i = TREND_WEEKS - 1; i >= 0; i--) {
+        const o = offset - i;
+        const b = weekBounds(o);
+        if (firstTs === null || b.end.getTime() < firstTs) continue;
+        const list = weekEntries(all, o, null);
+        const v = list.filter(isVape).length, c = list.length - v;
+        rows.push({ offset: o, label: weekLabel(b), cigs: sumCigs(list), vapes: sumVapes(list),
+          share: v + c ? v / (v + c) : 0, partial: Date.now() < b.end.getTime() });
+      }
+      return rows;
+    }
+
+    function fmtDelta(cur, ref, invert) {
+      if (ref == null) return '';
+      const d = cur - ref;
+      if (Math.abs(d) < 0.01) return '<span class="delta">=</span>';
+      const pct = ref > 0 ? ` (${d > 0 ? '+' : ''}${Math.round((d / ref) * 100)}%)` : '';
+      // Para tabaco bajar es bueno (verde); para vaper solo informamos sin color
+      const cls = invert ? '' : (d < 0 ? 'down' : 'up');
+      return `<span class="delta ${cls}">${d > 0 ? '+' : '−'}${formatTotal(Math.abs(d))}${pct}</span>`;
+    }
+
+    const pct = (x) => `${Math.round(x * 100)}%`;
+
+    function weekVerdict(a) {
+      if (!a.base) {
+        return a.preVape
+          ? 'No hay semanas completas registradas antes de empezar con el vaper, así que no hay una línea base contra la cual medir el reemplazo. Usá la comparación con la semana anterior y la tendencia.'
+          : 'Todavía no hay semanas anteriores completas para comparar. Seguí registrando y el análisis aparece la semana que viene.';
+      }
+      const drop = a.base.cigs - a.cur.cigs;
+      const significant = isSignificantChange(drop, a.base.cigs);
+      const replaced = a.slots.filter(s => s.status === 'reemplazo');
+      const replacedDrop = replaced.reduce((t, s) => t - s.diff, 0);
+      const ref = a.preVape
+        ? `tu promedio antes del vaper (${a.n} semana${a.n > 1 ? 's' : ''})`
+        : `tu promedio de las ${a.n} semana${a.n > 1 ? 's' : ''} anteriores`;
+      const parts = [];
+
+      if (!a.cur.vapes) {
+        if (significant && drop > 0) parts.push(`Fumaste <strong class="down">${formatTotal(drop)} cigarrillos menos</strong> que ${ref}, sin usar vaper.`);
+        else if (significant) parts.push(`Fumaste <strong class="up">${formatTotal(-drop)} cigarrillos más</strong> que ${ref}. Sin uso de vaper esta semana.`);
+        else parts.push(`Consumo de tabaco similar a ${ref}. Sin uso de vaper esta semana.`);
+        return parts.join(' ');
+      }
+
+      if (significant && drop > 0 && replacedDrop > 0) {
+        parts.push(`<strong class="down">Posible reemplazo.</strong> Fumaste ${formatTotal(drop)} cigarrillos menos que ${ref} y usaste vaper ${formatTotal(a.cur.vapes)} veces.`);
+        parts.push(`${formatTotal(replacedDrop)} de esa baja fue en franjas donde vapeaste (${replaced.map(s => s.label).join(', ')}).`);
+      } else if (significant && drop > 0) {
+        parts.push(`Fumaste <strong class="down">${formatTotal(drop)} cigarrillos menos</strong> que ${ref}, pero la baja fue en franjas distintas a las del vaper.`);
+      } else if (significant) {
+        parts.push(`<strong class="up">El vaper no reemplazó tabaco:</strong> fumaste ${formatTotal(-drop)} cigarrillos más que ${ref} y además ${vapeText(a.cur.vapes)}.`);
+      } else {
+        parts.push(`<strong class="up">El vaper se sumó al tabaco:</strong> ${vapeText(a.cur.vapes)} sin una baja clara de cigarrillos respecto de ${ref}.`);
+      }
+      if (a.vapeEvents) {
+        parts.push(`${a.vapesInHabitual} de ${a.vapeEvents} sesiones de vaper fueron en horarios en los que solías fumar.`);
+      }
+      return parts.join(' ');
+    }
+
+    function renderWeekAnalysis(offset) {
+      const a = analyzeWeek(offset);
+      const trend = weekTrend(offset);
+      const hasVapeEver = loadEntries().some(isVape);
+      if (!hasVapeEver) return '';
+
+      const cutoff = a.partial
+        ? `<span class="note">Semana en curso: se compara contra el mismo tramo (lunes a ${new Date().toLocaleDateString('es-AR', { weekday: 'long' })} ${formatTime(new Date().toISOString())}) de las semanas anteriores.</span>`
+        : '';
+
+      let html = `<div class="section-title">Tabaco vs vaper</div>
+        <div class="card verdict">${weekVerdict(a)}${cutoff}</div>`;
+
+      if (a.base || a.prev) {
+        const row = (label, key, invert, fmt = formatTotal) => `<tr>
+            <td>${label}</td>
+            <td>${fmt(a.cur[key])}</td>
+            <td>${a.prev ? fmt(a.prev[key]) : '—'}${a.prev && key !== 'share' ? fmtDelta(a.cur[key], a.prev[key], invert) : ''}</td>
+            <td>${a.base ? fmt(a.base[key]) : '—'}${a.base && key !== 'share' ? fmtDelta(a.cur[key], a.base[key], invert) : ''}</td>
+          </tr>`;
+        html += `<div class="card"><table class="cmp-table">
+            <tr><th></th><th>Esta semana</th><th>Anterior</th><th>${a.preVape ? 'Antes vaper' : `Prom. ${a.n} sem.`}</th></tr>
+            ${row('Cigarrillos', 'cigs', false)}
+            ${row('<span class="vape-text">Vaper</span>', 'vapes', true)}
+            ${row('Momentos con vaper', 'share', true, pct)}
+          </table>
+          <div class="card-sub">Diferencias de esta semana contra cada columna (verde = menos tabaco). ${a.preVape ? `"Antes vaper" = promedio semanal de las ${a.n || 0} semanas previas al primer vaper. ` : ''}"Momentos con vaper" = % de registros que fueron vaper.</div>
+        </div>`;
+      }
+
+      if (a.base) {
+
+        const labels = { reemplazo: 'Reemplazo probable', baja: 'Bajó sin vaper', suma: 'Vaper sin baja', sube: 'Subió tabaco', igual: 'Sin cambios' };
+        const rows = a.slots.filter(s => s.baseCigs || s.cigs || s.vapes);
+        html += `<div class="section-title">Reemplazo por franja horaria</div>
+          <div class="card">${rows.length ? rows.map(s => `<div class="slot-row">
+              <div>
+                <div class="slot-name">${s.label}</div>
+                <div class="slot-nums">tabaco ${formatTotal(s.baseCigs)} → ${formatTotal(s.cigs)}${s.vapes ? ` · <span class="vape-text">vaper ${formatTotal(s.vapes)}</span>` : ''}</div>
+              </div>
+              <span class="pill ${s.status}">${labels[s.status]}</span>
+            </div>`).join('') : '<div class="empty">Sin datos</div>'}
+            <div class="card-sub">Tabaco: ${a.preVape ? 'promedio antes del vaper' : 'promedio de las semanas anteriores'} → esta semana.</div>
+          </div>`;
+      }
+
+      if (trend.length > 1) {
+        const maxC = Math.max(...trend.map(t => t.cigs), 0.01);
+        const maxV = Math.max(...trend.map(t => t.vapes), 0.01);
+        html += `<div class="section-title">Últimas ${trend.length} semanas</div>
+          <div class="card">
+            <div class="legend"><span><i></i>Cigarrillos</span><span><i class="vape"></i>Vaper</span></div>
+            ${trend.map(t => `<div class="bar-row">
+              <span class="bar-label">${t.label}${t.partial ? '*' : ''}</span>
+              <div class="bar-stack">
+                <div class="bar-track"><div class="bar-fill" style="width:${(t.cigs / maxC) * 100}%"></div></div>
+                <div class="bar-track"><div class="bar-fill vape" style="width:${(t.vapes / maxV) * 100}%"></div></div>
+              </div>
+              <span class="bar-value">${formatTotal(t.cigs)}<small>${formatTotal(t.vapes)}</small></span>
+            </div>`).join('')}
+            ${trend.some(t => t.partial) ? '<div class="card-sub">* semana en curso</div>' : ''}
+          </div>`;
+      }
+      return html;
+    }
+
+    // Antes / después del primer uso de vaper (para la pestaña Stats)
+    function renderVapeSince() {
+      const all = loadEntries();
+      const vapes = all.filter(isVape);
+      if (!vapes.length) return '';
+      const firstVape = startOfDay(new Date(Math.min(...vapes.map(e => new Date(e.ts).getTime()))));
+      const firstTs = startOfDay(new Date(firstEntryTime(all)));
+      const today = startOfDay(new Date());
+      const daysAfter = Math.round((today - firstVape) / DAY_MS) + 1;
+      const preStart = new Date(Math.max(firstTs.getTime(), firstVape.getTime() - 28 * DAY_MS));
+      const daysBefore = Math.round((firstVape - preStart) / DAY_MS);
+      const after = all.filter(e => new Date(e.ts) >= firstVape);
+      const before = all.filter(e => { const d = new Date(e.ts); return d >= preStart && d < firstVape; });
+      const afterCigs = sumCigs(after) / daysAfter;
+      const afterVapes = sumVapes(after) / daysAfter;
+      const since = firstVape.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
+
+      let body;
+      if (daysBefore > 0) {
+        const beforeCigs = sumCigs(before) / daysBefore;
+        const d = afterCigs - beforeCigs;
+        const p = beforeCigs ? Math.round((d / beforeCigs) * 100) : 0;
+        body = `<div class="card-row"><span class="card-label">Antes (${daysBefore} días previos)</span><span class="card-value">${formatTotal(beforeCigs)}</span></div>
+          <div class="card-row" style="margin-top:0.4rem"><span class="card-label">Desde el vaper (${daysAfter} días)</span><span class="card-value">${formatTotal(afterCigs)}</span></div>
+          <div class="card-sub">cigarrillos por día · <span class="${d < 0 ? 'down' : 'up'}">${d > 0 ? '+' : ''}${p}%</span> · <span class="vape-text">${formatTotal(afterVapes)} sesiones de vaper / día</span></div>`;
+      } else {
+        body = `<div class="card-row"><span class="card-label">Desde el vaper (${daysAfter} días)</span><span class="card-value">${formatTotal(afterCigs)}</span></div>
+          <div class="card-sub">cigarrillos por día · <span class="vape-text">${formatTotal(afterVapes)} sesiones de vaper / día</span> · sin registros previos para comparar</div>`;
+      }
+      return `<div class="section-title">Desde que usás vaper (${since})</div><div class="card">${body}</div>`;
     }
 
     function getStatEntries() {
@@ -1279,12 +1679,34 @@
       SLOTS.forEach(s => slotTotals[s.id] = 0);
       for (let h = 0; h < 24; h++) hourTotals[h] = 0;
 
+      const slotVapes = {};
+      const hourVapes = {};
+      SLOTS.forEach(s => slotVapes[s.id] = 0);
+      for (let h = 0; h < 24; h++) hourVapes[h] = 0;
       entries.forEach(e => {
         const h = new Date(e.ts).getHours();
         const slot = getSlot(h);
-        slotTotals[slot.id] += e.amount;
-        hourTotals[h] += e.amount;
+        if (isVape(e)) {
+          slotVapes[slot.id] += e.amount;
+          hourVapes[h] += e.amount;
+        } else {
+          slotTotals[slot.id] += e.amount;
+          hourTotals[h] += e.amount;
+        }
       });
+      const anyVape = entries.some(isVape);
+      const maxVape = Math.max(...Object.values(hourVapes), 0.01);
+      const maxSlotVape = Math.max(...Object.values(slotVapes), 0.01);
+      const barHtml = (label, v, pctC, vv, pctV) => `<div class="bar-row">
+          <span class="bar-label">${label}</span>
+          <div class="bar-stack">
+            <div class="bar-track"><div class="bar-fill" style="width:${pctC}%"></div></div>
+            ${anyVape ? `<div class="bar-track"><div class="bar-fill vape" style="width:${pctV}%"></div></div>` : ''}
+          </div>
+          <span class="bar-value">${formatTotal(v)}${anyVape ? `<small>${formatTotal(vv)}</small>` : ''}</span>
+        </div>`;
+      const legend = anyVape ? '<div class="legend"><span><i></i>Cigarrillos</span><span><i class="vape"></i>Vaper</span></div>' : '';
+      document.getElementById('vapeSince').innerHTML = renderVapeSince();
 
       const maxSlot = SLOTS.reduce((best, s) =>
         slotTotals[s.id] > slotTotals[best.id] ? s : best, SLOTS[0]);
@@ -1292,39 +1714,31 @@
       peakEl.textContent = slotTotals[maxSlot.id] > 0 ? maxSlot.label : '—';
 
       const maxSlotVal = Math.max(...SLOTS.map(s => slotTotals[s.id]), 0.01);
-      document.getElementById('slotBars').innerHTML = SLOTS.map(s => {
-        const v = slotTotals[s.id];
-        const pct = (v / maxSlotVal) * 100;
-        return `<div class="bar-row">
-          <span class="bar-label">${s.label}</span>
-          <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
-          <span class="bar-value">${formatTotal(v)}</span>
-        </div>`;
-      }).join('');
+      document.getElementById('slotBars').innerHTML = legend + SLOTS.map(s =>
+        barHtml(s.label, slotTotals[s.id], (slotTotals[s.id] / maxSlotVal) * 100,
+          slotVapes[s.id], (slotVapes[s.id] / maxSlotVape) * 100)
+      ).join('');
 
       const maxHour = Math.max(...Object.values(hourTotals), 0.01);
       const topHours = Object.entries(hourTotals)
-        .filter(([, v]) => v > 0)
-        .sort((a, b) => b[1] - a[1]);
+        .filter(([h, v]) => v > 0 || hourVapes[h] > 0)
+        .sort((a, b) => (b[1] - a[1]) || (hourVapes[b[0]] - hourVapes[a[0]]));
 
       document.getElementById('hourBars').innerHTML = topHours.length
-        ? topHours.map(([h, v]) => {
-            const pct = (v / maxHour) * 100;
-            const label = `${String(h).padStart(2, '0')}:00`;
-            return `<div class="bar-row">
-              <span class="bar-label">${label}</span>
-              <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
-              <span class="bar-value">${formatTotal(v)}</span>
-            </div>`;
-          }).join('')
+        ? legend + topHours.map(([h, v]) =>
+            barHtml(`${String(h).padStart(2, '0')}:00`, v, (v / maxHour) * 100,
+              hourVapes[h], (hourVapes[h] / maxVape) * 100)
+          ).join('')
         : '<div class="empty">Sin datos</div>';
     }
 
     function renderData() {
-      const n = loadEntries().length;
-      const total = formatTotal(sumAmounts(loadEntries()));
+      const all = loadEntries();
+      const n = all.length;
+      const vapes = sumVapes(all);
       document.getElementById('dataSummary').innerHTML =
-        `<span>${n}</span> registro${n !== 1 ? 's' : ''} · total histórico: <span>${total}</span>`;
+        `<span>${n}</span> registro${n !== 1 ? 's' : ''} · cigarrillos: <span>${formatTotal(sumCigs(all))}</span>` +
+        (vapes ? ` · vaper: <span class="vape-text">${formatTotal(vapes)}</span>` : '');
 
       const isFile = location.protocol === 'file:';
       const hosted = isHosted();
@@ -1437,13 +1851,14 @@
       const headStyles = { fillColor: accent, textColor: 20, fontStyle: 'bold' };
       const margin = 14;
 
-      const total = sumAmounts(entries);
+      const total = sumCigs(entries);
+      const totalVapes = sumVapes(entries);
       const days = Math.round((startOfDay(end) - start) / 86400000) + 1;
       const byDay = new Map();
       entries.forEach(e => {
         const key = startOfDay(new Date(e.ts)).getTime();
-        const cur = byDay.get(key) || { amount: 0, count: 0 };
-        cur.amount += e.amount;
+        const cur = byDay.get(key) || { amount: 0, vapes: 0, count: 0 };
+        if (isVape(e)) cur.vapes += e.amount; else cur.amount += e.amount;
         cur.count++;
         byDay.set(key, cur);
       });
@@ -1452,7 +1867,7 @@
 
       doc.setFontSize(18);
       doc.setTextColor(30);
-      doc.text('Tabaco — Reporte de consumo', margin, 20);
+      doc.text('Tabaco — Reporte de consumo (tabaco y vaper)', margin, 20);
       doc.setFontSize(10);
       doc.setTextColor(110);
       doc.text(`Del ${fmtRange(start)} al ${fmtRange(end)}`, margin, 27);
@@ -1467,7 +1882,9 @@
           ['Días en el rango', String(days)],
           ['Días sin registros', String(days - byDay.size)],
           ['Promedio por día', formatTotal(total / days)],
-          ['Día de mayor consumo', `${formatShortDate(new Date(peak[0]))} (${formatTotal(peak[1].amount)})`],
+          ['Día de mayor consumo', peak[1].amount ? `${formatShortDate(new Date(peak[0]))} (${formatTotal(peak[1].amount)})` : '—'],
+          ['Sesiones de vaper', formatTotal(totalVapes)],
+          ['Vaper promedio por día', formatTotal(totalVapes / days)],
         ],
         headStyles,
         columnStyles: { 1: { halign: 'right' } },
@@ -1477,27 +1894,59 @@
       const moodRows = [...MOODS, { id: null, label: 'Sin especificar' }]
         .map(m => {
           const list = entries.filter(e => (getMood(e.mood) ? e.mood : null) === m.id);
-          return { label: m.label, count: list.length, amount: sumAmounts(list) };
+          return { label: m.label, count: list.length, amount: sumCigs(list), vapes: sumVapes(list) };
         })
         .filter(r => r.count)
         .sort((a, b) => b.amount - a.amount)
-        .map(r => [r.label, String(r.count), formatTotal(r.amount), `${Math.round((r.amount / total) * 100)}%`]);
+        .map(r => [r.label, String(r.count), formatTotal(r.amount), total ? `${Math.round((r.amount / total) * 100)}%` : '—', formatTotal(r.vapes)]);
 
       doc.autoTable({
         startY: doc.lastAutoTable.finalY + 8,
-        head: [['Estado de ánimo', 'Registros', 'Cigarrillos', '% del total']],
+        head: [['Estado de ánimo', 'Registros', 'Cigarrillos', '% cig.', 'Vaper']],
         body: moodRows,
         headStyles,
-        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
+        margin: { left: margin, right: margin },
+      });
+
+      // Tabaco vs vaper por semana (lunes a domingo) dentro del rango
+      const weekRows = [];
+      let prevCigs = null;
+      for (let o = -Math.ceil((Date.now() - start) / (7 * DAY_MS)) - 1; o <= 0; o++) {
+        const w = weekBounds(o);
+        if (w.end < start || w.start > end) continue;
+        const list = entries.filter(e => { const d = new Date(e.ts); return d >= w.start && d <= w.end; });
+        const cigs = sumCigs(list), vapes = sumVapes(list);
+        const v = list.filter(isVape).length;
+        const delta = prevCigs === null ? '—' : `${cigs - prevCigs > 0 ? '+' : ''}${formatTotal(cigs - prevCigs)}`;
+        weekRows.push([weekLabel(w) + (Date.now() < w.end.getTime() ? ' (en curso)' : ''), formatTotal(cigs), delta, formatTotal(vapes), list.length ? `${Math.round((v / list.length) * 100)}%` : '—']);
+        prevCigs = cigs;
+      }
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 8,
+        head: [['Semana', 'Cigarrillos', 'Dif. vs anterior', 'Vaper', 'Momentos vaper']],
+        body: weekRows,
+        headStyles,
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
+        margin: { left: margin, right: margin },
+      });
+
+      const slotRange = totalsBySlot(entries);
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 8,
+        head: [['Franja horaria', 'Cigarrillos', 'Vaper']],
+        body: SLOTS.map(s => [s.label, formatTotal(slotRange[s.id].cigs), formatTotal(slotRange[s.id].vapes)]),
+        headStyles,
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } },
         margin: { left: margin, right: margin },
       });
 
       doc.autoTable({
         startY: doc.lastAutoTable.finalY + 8,
-        head: [['Día', 'Registros', 'Cigarrillos']],
-        body: [...byDay.entries()].map(([k, v]) => [formatShortDate(new Date(k)), String(v.count), formatTotal(v.amount)]),
+        head: [['Día', 'Registros', 'Cigarrillos', 'Vaper']],
+        body: [...byDay.entries()].map(([k, v]) => [formatShortDate(new Date(k)), String(v.count), formatTotal(v.amount), formatTotal(v.vapes)]),
         headStyles,
-        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } },
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
         margin: { left: margin, right: margin },
       });
 
@@ -1510,7 +1959,7 @@
           return [
             d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' }),
             d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false }),
-            fractionLabel(e.amount),
+            isVape(e) ? 'vaper' : fractionLabel(e.amount),
             mood ? mood.label : '—',
             e.note || '',
           ];
@@ -1520,7 +1969,7 @@
         columnStyles: {
           0: { cellWidth: 20 },
           1: { cellWidth: 14 },
-          2: { cellWidth: 13, halign: 'right' },
+          2: { cellWidth: 15, halign: 'right' },
           3: { cellWidth: 30 },
         },
         margin: { left: margin, right: margin },
@@ -1549,7 +1998,7 @@
     }
 
     document.querySelectorAll('.log-btn').forEach(btn => {
-      btn.addEventListener('click', () => openEntrySheet(parseFloat(btn.dataset.amount)));
+      btn.addEventListener('click', () => openEntrySheet(parseFloat(btn.dataset.amount), btn.dataset.type));
     });
 
     renderMoodGrid();
